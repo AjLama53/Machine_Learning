@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, roc_curve, precision_recall_curve, auc, RocCurveDisplay, PrecisionRecallDisplay
+from sklearn.preprocessing import StandardScaler, label_binarize
+from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, RocCurveDisplay, PrecisionRecallDisplay
 
 
 
@@ -30,8 +30,6 @@ def task_two(model, input, output):
     Y_tests = []
     Y_preds = []
     Y_scores = []
-    fprs = []
-    tprs = []
     # Create arrays to holds all the test values and the predictions, that way 5 fold cf can use this dont create the confusion matrix
 
 
@@ -63,13 +61,6 @@ def task_two(model, input, output):
         Y_scores.append(Y_score)
         # We append all the different tests from the folds and the different predictions from said folds to be used in the final confusion matrix
 
-        # for label in Y_test:
-            # fpr, tpr, thresholds = roc_curve(label, Y_score)
-            # fprs.append(fpr)
-            # tprs.append(tpr)
-
-
-
         if temp > 0:
             # On our first fold we get the confusion matrix
 
@@ -99,15 +90,23 @@ def task_two(model, input, output):
     micro_avg = f"   micro avg       {precision:.2f}      {recall:.2f}      {f1:.2f}"
     # Have to get the micro your self since it is not included in the classification report
 
+    lb_classes = label_binarize(Y_true, classes=labels)
+    # This binarizes our multi class labels
 
-    # roc_display = RocCurveDisplay()
+
+    roc_display = RocCurveDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+    # We flatten out the arrays inside of the two parameters and call the function
+
+    pr_display = PrecisionRecallDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+    # We flatten out the arrays inside of the two parameters and call the function
 
 
-    # Gets the 
+    
 
-    # precision, recall, thresholds = precision_recall_curve(Y_true, Y_all_scores)
 
-    # pr_display = PrecisionRecallDisplay(precision, recall=recall)
+
+
+    
 
 
 
@@ -115,7 +114,7 @@ def task_two(model, input, output):
 
         
 
-    return labels, one_fold_cf, five_fold_cf, cr, micro_avg
+    return labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display
     # Return the values
 
 
@@ -133,25 +132,49 @@ def main():
     svm = SVC(kernel="rbf", probability=True, random_state=42)
     # Initializes a SVC to variable svm
 
-    labels, one_fold_cf, five_fold_cf, cr, micro_avg = task_two(svm, X, Y)
-    print()
-    print("==============One Fold Confusion Matrix=======================")
-    print(labels)
-    print(one_fold_cf)
-    print()
-    print("==============Five Fold Confusion Matrix======================")
-    print(labels)
-    print(five_fold_cf)
-    print()
-    print("==============Classification Report===========================")
-    print(cr, end="")
-    print(micro_avg)
-    print()
-    print("======================ROC-AUC Curve===========================")
-    # pr_display.plot()
-    # plt.show()
+    while True: 
 
-    # complete task one using our svm model and our label and features
+        print("Which task would you like to test?")
+        print("Task 2")
+        print("Task 3")
+        print("Task 4")
+        print("Exit")
+
+        command = input("Enter command here: ").lower()
+
+        if command == "task 2":
+            labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display = task_two(svm, X, Y)
+            print()
+            print("==============One Fold Confusion Matrix=======================")
+            print(labels)
+            print(one_fold_cf)
+            print()
+            print("==============Five Fold Confusion Matrix======================")
+            print(labels)
+            print(five_fold_cf)
+            print()
+            print("==============Classification Report===========================")
+            print(cr, end="")
+            print(micro_avg)
+            print()
+            roc_display.plot()
+            plt.show()
+
+            pr_display.plot()
+            plt.show()
+
+
+            # complete task one using our svm model and our label and features
+
+        elif command == "task 2":
+            ...
+
+        elif command == "task 2":
+            ...
+
+        elif command == "exit":
+            break
+    
 
     
 
