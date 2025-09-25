@@ -11,7 +11,6 @@ from sklearn.metrics import classification_report, precision_score, recall_score
 
 
 
-
 def task_two(model, input, output):
     skf = StratifiedKFold(n_splits=5)
     # Creates a stratified k fold object and assigns it to a variable
@@ -101,21 +100,11 @@ def task_two(model, input, output):
     # We flatten out the arrays inside of the two parameters and call the function
 
 
-    
-
-
-
-
-    
-
-
-
-
-
-        
-
     return labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display
     # Return the values
+
+def task_three(model, input, output):
+    ...
 
 
 
