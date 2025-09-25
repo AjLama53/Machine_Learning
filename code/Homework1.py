@@ -121,7 +121,7 @@ def task_two(model, input, output):
 
 
 def main():
-    df = pd.read_csv('/Users/ajlam/Documents/GitHub/AjLama53/Machine_Learning_Homework1/lncRNA_5_Cancers.csv')
+    df = pd.read_csv('lncRNA_5_Cancers.csv')
     # Reads the csv file and formats it into a dataframe
 
     Y = df['Class']
