@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import StandardScaler, label_binarize
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, RocCurveDisplay, PrecisionRecallDisplay
-
+from tensorflow.keras.models import Model
+from tensorflow.keras import layers, losses
 
 
 
@@ -104,11 +106,22 @@ def task_two(model, input, output):
     # Return the values
 
 def task_three(model, input, output):
-    ...
+    laten_dim = 50
+    autoencoder = Autoencoder(latent_dim, input)
+
+    autoencoder.fit(input, input, epochs=10)
+
+    
 
 
 
 def main():
+    if tf.config.list_physical_devices('GPU'):
+        print("Tensorflow IS using the GPU")
+
+    else:
+        print("Tensorflow IS NOT using the GPU")
+
     df = pd.read_csv('lncRNA_5_Cancers.csv')
     # Reads the csv file and formats it into a dataframe
 
