@@ -2,13 +2,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import os
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import StandardScaler, label_binarize
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, RocCurveDisplay, PrecisionRecallDisplay
 from tensorflow.keras.models import Model
-from tensorflow.keras import layers, losses
+from tensorflow.keras import Input
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.losses import MeanSquaredError
+
 
 
 
@@ -106,23 +110,129 @@ def task_two(model, input, output):
     # Return the values
 
 def task_three(model, input, output):
-    laten_dim = 50
-    autoencoder = Autoencoder(latent_dim, input)
+    skf = StratifiedKFold(n_splits=5)
 
-    autoencoder.fit(input, input, epochs=10)
+    temp = 1
+
+    scaler = StandardScaler()
+
+    labels = None
+    one_fold_cf = None
+
+    Y_tests = []
+    Y_preds = []
+    Y_scores = []
+
+    input_dim = Input(shape=(input.shape[1], ))
+    # We define the input as all the columns from the csv
+
+    encoded = Dense(4096, activation='relu')(input_dim)
+    encoded = Dense(1024, activation='relu')(encoded)
+    encoded = Dense(256, activation='relu')(encoded)
+    latent_dim = Dense(50, activation='linear')(encoded)
+    # There are our layers for our encoder part of the autoencoder
+    # We slowly minimize the size of the layers to 50 as per the assignment requirements
+
+    decoded = Dense(256, activation='relu')(latent_dim)
+    decoded = Dense(1024, activation='relu')(decoded)
+    decoded = Dense(4096, activation='relu')(decoded)
+    output_dim = Dense(input.shape[1], activation='linear')(decoded)
+    # These are the layers for our decoder part that builds the bottleneck back up to the original input
+
+    autoencoder = Model(input_dim, output_dim, name="autoencoder")
+    # This model brings the two parts together to create the autoencoder
+
+    encoder = Model(input_dim, latent_dim, name="encoder")
+    # This is the encoder only part that will output our 50 latent dimensions for our assignment
+
+    # This was all of the defining model part^
+    input_scaled = scaler.fit_transform(input)
+    autoencoder.compile(optimizer='adam', loss=MeanSquaredError())
+    # Tells our autoencoder the rules as to which it will learn from 
+
+    autoencoder.fit(input_scaled, input_scaled, epochs=100, batch_size=64)
+    # We train our autoencoder
+
+    new_dim = encoder.predict(input_scaled)
+    # We train our encoder and get our new 50 laten dimensions
+
+    for train, test in skf.split(new_dim, output):
+        # new_dim is our new input since it is 50 new features and output is our output
+
+        X_train = input.iloc[train]
+        X_test = input.iloc[test]
+        Y_train = output.iloc[train]
+        Y_test = output.iloc[test]
+
+
+        model.fit(X_train, Y_train)
+
+        Y_pred = model.predict(X_test)
+
+        Y_score = model.predict_proba(X_test)
+
+        Y_tests.append(Y_test)
+        Y_preds.append(Y_pred)
+        Y_scores.append(Y_score)
+
+        if temp > 0:
+            labels = sorted(output.unique())
+            one_fold_cf = confusion_matrix(Y_test, Y_pred, labels=labels)
+            temp -= 1
+
+        
+    Y_true = np.concatenate(Y_tests)
+    Y_all_preds = np.concatenate(Y_preds)
+    Y_all_scores = np.concatenate(Y_scores)
+
+    five_fold_cf = confusion_matrix(Y_true, Y_all_preds, labels = labels)
+
+    cr = classification_report(Y_true, Y_all_preds, labels=labels)
+
+    precision = precision_score(Y_true, Y_all_preds, average='micro')
+    recall = recall_score(Y_true, Y_all_preds, average='micro')
+    f1 = f1_score(Y_true, Y_all_preds, average='micro')
+
+    micro_avg = f"   micro avg       {precision:.2f}      {recall:.2f}      {f1:.2f}"
+
+    lb_classes = label_binarize(Y_true, classes=labels)
+
+
+    roc_display = RocCurveDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+
+    pr_display = PrecisionRecallDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+
+
+    return labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display
+
+
+    
+
+
+
+
+
+
+
+
+
 
     
 
 
 
 def main():
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
     if tf.config.list_physical_devices('GPU'):
         print("Tensorflow IS using the GPU")
 
     else:
         print("Tensorflow IS NOT using the GPU")
 
-    df = pd.read_csv('lncRNA_5_Cancers.csv')
+    print(f"CPUs available to python: {os.cpu_count()}")
+
+    df = pd.read_csv('code/lncRNA_5_Cancers.csv')
     # Reads the csv file and formats it into a dataframe
 
     Y = df['Class']
@@ -168,10 +278,28 @@ def main():
 
             # complete task one using our svm model and our label and features
 
-        elif command == "task 2":
-            ...
+        elif command == "task 3":
+            labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display = task_three(svm, X, Y)
+            print()
+            print("==============One Fold Confusion Matrix=======================")
+            print(labels)
+            print(one_fold_cf)
+            print()
+            print("==============Five Fold Confusion Matrix======================")
+            print(labels)
+            print(five_fold_cf)
+            print()
+            print("==============Classification Report===========================")
+            print(cr, end="")
+            print(micro_avg)
+            print()
+            roc_display.plot()
+            plt.show()
 
-        elif command == "task 2":
+            pr_display.plot()
+            plt.show()
+
+        elif command == "task 4":
             ...
 
         elif command == "exit":
