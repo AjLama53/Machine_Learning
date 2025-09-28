@@ -12,6 +12,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras import Input
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import MeanSquaredError
+from concrete_autoencoder import ConcreteAutoEncoderFeatureSelector
+
 
 
 
@@ -154,13 +156,106 @@ def task_three(model, input, output):
     # We train our autoencoder
 
     new_dim = encoder.predict(input_scaled)
-    # We train our encoder and get our new 50 laten dimensions
+    # We train our encoder and get our new 50 latent dimensions
 
     for train, test in skf.split(new_dim, output):
         # new_dim is our new input since it is 50 new features and output is our output
 
-        X_train = input.iloc[train]
-        X_test = input.iloc[test]
+        X_train = new_dim[train]
+        X_test = new_dim[test]
+        Y_train = output.iloc[train]
+        Y_test = output.iloc[test]
+
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+
+        model.fit(X_train_scaled, Y_train)
+
+        Y_pred = model.predict(X_test_scaled)
+
+        Y_score = model.predict_proba(X_test_scaled)
+
+        Y_tests.append(Y_test)
+        Y_preds.append(Y_pred)
+        Y_scores.append(Y_score)
+
+        if temp > 0:
+            labels = sorted(output.unique())
+            one_fold_cf = confusion_matrix(Y_test, Y_pred, labels=labels)
+            temp -= 1
+
+        
+    Y_true = np.concatenate(Y_tests)
+    Y_all_preds = np.concatenate(Y_preds)
+    Y_all_scores = np.concatenate(Y_scores)
+
+    five_fold_cf = confusion_matrix(Y_true, Y_all_preds, labels = labels)
+
+    cr = classification_report(Y_true, Y_all_preds, labels=labels)
+
+    precision = precision_score(Y_true, Y_all_preds, average='micro')
+    recall = recall_score(Y_true, Y_all_preds, average='micro')
+    f1 = f1_score(Y_true, Y_all_preds, average='micro')
+
+    micro_avg = f"   micro avg       {precision:.2f}      {recall:.2f}      {f1:.2f}"
+
+    lb_classes = label_binarize(Y_true, classes=labels)
+
+
+    roc_display = RocCurveDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+
+    pr_display = PrecisionRecallDisplay.from_predictions(lb_classes.ravel(), Y_all_scores.ravel())
+
+
+    return labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display
+
+
+def task_four(model, input, output):
+    skf = StratifiedKFold(n_splits=5)
+
+    temp = 1
+
+    scaler = StandardScaler()
+
+    labels = None
+    one_fold_cf = None
+
+    Y_tests = []
+    Y_preds = []
+    Y_scores = []
+
+    input_scaled = scaler.fit_transform(input)
+
+    def decoder(x):
+        decoded = Dense(256, activation='relu')(x)
+        decoded = Dense(1024, activation='relu')(decoded)
+        decoded = Dense(4096, activation='relu')(decoded)
+        output_dim = Dense(input.shape[1], activation='linear')(decoded)
+
+        return output_dim
+    
+    # This function defines our decoder for our cae. The library comes with the encoder part and we just need to define the output
+
+
+    cae = ConcreteAutoEncoderFeatureSelector(K = 50, output_function = decoder, num_epochs = 800)
+    # This function creates a cae. It selects K features, using output_function as output and num_epochs
+
+    cae.fit(input_scaled, input_scaled)
+    # Train the cae
+
+    new_dim = cae.get_support(indices = True)
+    # Get the indices of the new k features, assign it to a variable
+
+    reduced_features = input.iloc[:, new_dim]
+    # get the columns from the data set using the original data
+    # .iloc allows us to get my indices [:, new_dim] means all columns since : means all rows and new_dim are our columns
+    for train, test in skf.split(reduced_features, output):
+        # We split based on our new 50 features and the output
+
+        X_train = reduced_features.iloc[train]
+        # We use reduces_features to split X since we only have 50 features now
+        X_test = reduced_features.iloc[test]
+        # Same thing here
         Y_train = output.iloc[train]
         Y_test = output.iloc[test]
 
@@ -206,18 +301,6 @@ def task_three(model, input, output):
     return labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display
 
 
-    
-
-
-
-
-
-
-
-
-
-
-    
 
 
 
@@ -300,7 +383,25 @@ def main():
             plt.show()
 
         elif command == "task 4":
-            ...
+            labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display = task_four(svm, X, Y)
+            print()
+            print("==============One Fold Confusion Matrix=======================")
+            print(labels)
+            print(one_fold_cf)
+            print()
+            print("==============Five Fold Confusion Matrix======================")
+            print(labels)
+            print(five_fold_cf)
+            print()
+            print("==============Classification Report===========================")
+            print(cr, end="")
+            print(micro_avg)
+            print()
+            roc_display.plot()
+            plt.show()
+
+            pr_display.plot()
+            plt.show()
 
         elif command == "exit":
             break
