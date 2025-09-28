@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import os
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
@@ -221,13 +222,17 @@ def task_three(model, input, output):
 
 
 def main():
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
     if tf.config.list_physical_devices('GPU'):
         print("Tensorflow IS using the GPU")
 
     else:
         print("Tensorflow IS NOT using the GPU")
 
-    df = pd.read_csv('lncRNA_5_Cancers.csv')
+    print(f"CPUs available to python: {os.cpu_count()}")
+
+    df = pd.read_csv('code/lncRNA_5_Cancers.csv')
     # Reads the csv file and formats it into a dataframe
 
     Y = df['Class']
@@ -273,7 +278,7 @@ def main():
 
             # complete task one using our svm model and our label and features
 
-        elif command == "task 2":
+        elif command == "task 3":
             labels, one_fold_cf, five_fold_cf, cr, micro_avg, roc_display, pr_display = task_three(svm, X, Y)
             print()
             print("==============One Fold Confusion Matrix=======================")
@@ -294,7 +299,7 @@ def main():
             pr_display.plot()
             plt.show()
 
-        elif command == "task 2":
+        elif command == "task 4":
             ...
 
         elif command == "exit":
