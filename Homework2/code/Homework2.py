@@ -3,11 +3,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 
 
 def principle_component_analysis(input, output):
+
+    scaler = StandardScaler()
+
+    scaled_input = scaler.fit_transform(input)
+    # Good practice to standardize data to mitigate bias
     
-    pca = PCA(n_components=2).fit_transform(input)
+    pca = PCA(n_components=2).fit_transform(scaled_input)
     # PCA function that needs how many dimensions we want, and we fit and tranform it after, returns a 2D numpy array
 
     data = {'PCA1': pca[:, 0],
@@ -43,7 +49,11 @@ def principle_component_analysis(input, output):
 
 def tSNE(input, output):
 
-    tsne = TSNE(n_components=2, perplexity=50, learning_rate='auto').fit_transform(input)
+    scaler = StandardScaler()
+
+    input_scaled = scaler.fit_transform(input)
+
+    tsne = TSNE(n_components=2, perplexity=50, learning_rate='auto').fit_transform(input_scaled)
 
     data = {
         'tsne1': tsne[:, 0],
