@@ -1,9 +1,12 @@
 import pandas as pd
-import xgboost as xgb
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.preprocessing import LabelEncoder
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+from catboost import CatBoostClassifier
 
 """
 Algorithms needed for this assignment:
@@ -19,14 +22,22 @@ def task_one(input, output):
     # Task one states that we need to find the best tree-based classifier using all the algorithms
     # We need to use metrics Accuracy and F1 score
 
+    le = LabelEncoder()
+
+    new_out = le.fit_transform(output)
+
     algorithms = {
         "Decision Tree": DecisionTreeClassifier(),
         "Random Forest": RandomForestClassifier(),
         "Gradient Boosting Machine": GradientBoostingClassifier(),
-        "XGBoost": xgb.XGBClassifier()
+        "XGBoost": XGBClassifier(tree_method="hist", device="cuda"),
+        "LightGBM": LGBMClassifier(device="gpu"),
+        "CatBoost": CatBoostClassifier(iterations=100,task_type="GPU")
     }
 
     metrics = {}
+
+    best = {}
 
 
     for name, algorithm in algorithms.items():
@@ -45,13 +56,13 @@ def task_one(input, output):
         # Set our f1 variable
 
 
-        for train, test in skf.split(input, output):
+        for train, test in skf.split(input, new_out):
             # We iterate through each split in our fold
 
             X_train = input.iloc[train]
             X_test = input.iloc[test]
-            Y_train = output.iloc[train]
-            Y_true = output.iloc[test]
+            Y_train = new_out[train]
+            Y_true = new_out[test]
             # Assign variables pertaining to the appropriate part of the split
 
 
@@ -73,6 +84,7 @@ def task_one(input, output):
 
         f1_avg /= n_splits
         # Divide by n_splits to get our avg
+
 
         metrics[name] = [accuracy_avg, f1_avg]
 
@@ -113,12 +125,6 @@ def main():
         print(f"Accuracy Score Average: {metric[0]:.2f}")
         print(f"F1 Score Average: {metric[1]:.2f}")
         print()
-
-
-
-
-    
-
 
 
 
