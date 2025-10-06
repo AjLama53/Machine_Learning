@@ -1,8 +1,12 @@
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import shap
+import seaborn as sns
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
@@ -18,7 +22,8 @@ Algorithms needed for this assignment:
     -CatBoost
 """
 
-def task_one(input, output):
+
+def task_one(input, output, algorithms, best):
     # Task one states that we need to find the best tree-based classifier using all the algorithms
     # We need to use metrics Accuracy and F1 score
 
@@ -26,19 +31,7 @@ def task_one(input, output):
 
     new_out = le.fit_transform(output)
 
-    algorithms = {
-        "Decision Tree": DecisionTreeClassifier(),
-        "Random Forest": RandomForestClassifier(),
-        "Gradient Boosting Machine": GradientBoostingClassifier(),
-        "XGBoost": XGBClassifier(tree_method="hist", device="cuda"),
-        "LightGBM": LGBMClassifier(device="gpu"),
-        "CatBoost": CatBoostClassifier(iterations=100,task_type="GPU")
-    }
-
     metrics = {}
-
-    best = {}
-
 
     for name, algorithm in algorithms.items():
 
@@ -55,9 +48,13 @@ def task_one(input, output):
         f1_avg = 0
         # Set our f1 variable
 
+        print(f"Compiling: {name}")
 
-        for train, test in skf.split(input, new_out):
+
+        for fold_number, (train, test) in enumerate(skf.split(input, new_out)):
             # We iterate through each split in our fold
+
+            print(f"fold: {fold_number}/{n_splits}")
 
             X_train = input.iloc[train]
             X_test = input.iloc[test]
@@ -89,18 +86,58 @@ def task_one(input, output):
         metrics[name] = [accuracy_avg, f1_avg]
 
 
-    return metrics
+    for n, metric in metrics.items():
+        if metric[0] > best["Metrics"][0] and metric[1] > best["Metrics"][1]:
+            best["Metrics"][0] = metric[0]
+            best["Metrics"][1] = metric[1]
+            best["Name"] = n
 
 
 
 
+    return metrics, best
 
 
 
+def task_two(input, output, algorithms, best):
+    from sklearn.preprocessing import LabelEncoder
+    import shap
+
+    model = algorithms[best["Name"]]
+
+    le = LabelEncoder()
+    new_out = le.fit_transform(output)
+    class_names = le.classes_
+
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        input, new_out, test_size=0.20, stratify=new_out
+    )
+
+    print("Training model")
+    model.fit(X_train, Y_train)
+    print("Model Trained")
+
+    print("Creating explainer and computing SHAP values")
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer(X_test)
+    print("SHAP values computed")
+
+    # ----- Plot top 10 per cancer -----
+    print("Generating per-cancer top 10 SHAP feature plots...")
+
+    # If multiclass → shap_values.values has shape (n_samples, n_classes, n_features)
+    for i, cls in enumerate(class_names):
+        print(f"  Plotting top 10 features for {cls}...")
+        shap.plots.bar(shap_values[:, :, i], max_display=10, show=False)
+        plt.title(f"Top 10 SHAP Features for {cls}")
+        plt.savefig(f"Homework3/images/shap_top10_{cls}.png", bbox_inches="tight")
+        plt.close()
+
+    print("All per-cancer SHAP plots saved successfully.")
+    return
 
 
-def task_two():
-    ...
+
 
 def task_three():
     ...
@@ -110,21 +147,60 @@ def task_four():
 
 
 def main():
+    algorithms = {
+        "Decision Tree": DecisionTreeClassifier(),
+        "Random Forest": RandomForestClassifier(),
+        "Gradient Boosting Machine": HistGradientBoostingClassifier(),
+        "XGBoost": XGBClassifier(tree_method="hist", device="cuda", max_depth=3, n_estimators=100),
+        "LightGBM": LGBMClassifier(device="gpu"),
+        "CatBoost": CatBoostClassifier(iterations=50,task_type="GPU")
+    }
+
+    best = {    
+        "Name": "XGBoost",
+        "Metrics": [0,0]
+    }
+
     df = pd.read_csv("lncRNA_5_Cancers.csv")
 
     X = df.drop(['Ensembl_ID', 'Class'], axis=1)
 
     Y = df['Class']
 
+    while True:
 
-    metrics = task_one(X, Y)
-    for name, metric in metrics.items():
-        print(f"================={name} Stats================")
-        print()
-        print(f"Algorithm: {name}")
-        print(f"Accuracy Score Average: {metric[0]:.2f}")
-        print(f"F1 Score Average: {metric[1]:.2f}")
-        print()
+        print("Select a task:")
+        print("Task 1")
+        print("Task 2")
+        print("Task 3")
+        print("Task 4")
+
+        cmd = input("Enter a command: ")
+
+
+        if cmd.lower() == "task 1":
+            metrics, best = task_one(X, Y, algorithms, best)
+            for name, metric in metrics.items():
+                print(f"================={name} Stats================")
+                print()
+                print(f"Algorithm: {name}")
+                print(f"Accuracy Score Average: {metric[0]:.4f}")
+                print(f"F1 Score Average: {metric[1]:.4f}")
+                print()
+
+            print(f"Best Algorithm: {best['Name']} with accuracy: {best['Metrics'][0]} and f1: {best['Metrics'][1]}")
+
+        elif cmd.lower() == "task 2":
+            task_two(X, Y, algorithms, best)
+
+        elif cmd.lower() == "task 3":
+            ...
+
+        elif cmd.lower() == "task 4":
+            ...
+
+        elif cmd.lower() == "exit":
+            break
 
 
 
