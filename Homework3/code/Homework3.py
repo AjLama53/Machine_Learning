@@ -99,7 +99,7 @@ def task_one(input, output, algorithms, best):
 
 
 
-def task_two(input, output, algorithms, best):
+def task_two(input, output, algorithms, best, patients):
 
     model = algorithms[best["Name"]]
 
@@ -136,13 +136,11 @@ def task_two(input, output, algorithms, best):
     # ----- (b) force plots for one patient (ID: TCGA-39-5011-01A) -----
     print("Generating SHAP force plots for patient TCGA-39-5011-01A...")
 
-    # Find the matching patient row (if present)
-    if "Ensembl_ID" in input.columns:
-        patient_mask = input["Ensembl_ID"] == "TCGA-39-5011-01A"
-    else:
-        patient_mask = input.index == "TCGA-39-5011-01A"
+    # Find the matching patient row using the provided patients Series
+    patient_mask = patients == "TCGA-39-5011-01A"
 
     if patient_mask.sum() > 0:
+        print("Found patient TCGA-39-5011-01A — generating SHAP force plots...")
         patient_row = input[patient_mask]
         patient_shap = explainer(patient_row)
 
@@ -160,7 +158,9 @@ def task_two(input, output, algorithms, best):
         print("Force plots generated successfully.")
     else:
         print("Patient TCGA-39-5011-01A not found in dataset.")
+
     return
+
 
 
 
@@ -276,7 +276,6 @@ def task_four(input, output, algorithms, best, drugs):
     explainer = shap.TreeExplainer(model)
     print("Explainer ready")
 
-    os.makedirs("Homework3/images", exist_ok=True)
 
     # ----- (a) per-drug top-10 SHAP features -----
     print("Generating per-drug top 10 SHAP feature plots...")
@@ -356,6 +355,8 @@ def main():
 
     Y1 = df1['Class']
 
+    patients = df1['Ensembl_ID']
+
     df2 = pd.read_csv('hw3-drug-screening-data.csv')
 
     X2 = df2.drop(['CELL_LINE_NAME', 'DRUG_NAME', 'LN_IC50'], axis=1)
@@ -387,7 +388,7 @@ def main():
             print(f"Best Algorithm: {best['Name']} with accuracy: {best['Metrics'][0]} and f1: {best['Metrics'][1]}")
 
         elif cmd.lower() == "task 2":
-            task_two(X1, Y1, algorithms_classifier, best_classifier)
+            task_two(X1, Y1, algorithms_classifier, best_classifier, patients)
 
         elif cmd.lower() == "task 3":
             metrics, best = task_three(X2, Y2, algorithms_regressor, best_regressor)
