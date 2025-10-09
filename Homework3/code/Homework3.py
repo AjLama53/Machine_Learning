@@ -123,7 +123,6 @@ def task_two(input, output, algorithms, best):
     # ----- (a) per-cancer top-10 SHAP features -----
     print("Generating per-cancer top 10 SHAP feature plots...")
 
-    os.makedirs("Homework3/images", exist_ok=True)
 
     for i, cls in enumerate(class_names):
         print(f"  Plotting top 10 features for {cls}...")
@@ -317,6 +316,7 @@ def task_four(input, output, algorithms, best, drugs):
     plt.close()
 
     print("Least-error SHAP plot saved.")
+
     return
 
 
@@ -332,7 +332,7 @@ def main():
     }
 
     best_classifier = {    
-        "Name": "",
+        "Name": "XGBoost",
         "Metrics": [0,0]
     }
 
@@ -346,7 +346,7 @@ def main():
     }
 
     best_regressor = {
-        "Name": "",
+        "Name": "Gradient Boosting Machine",
         "Metrics": [float("inf"),float("inf"),float("-inf"),float("inf")]
     }
 
@@ -387,7 +387,7 @@ def main():
             print(f"Best Algorithm: {best['Name']} with accuracy: {best['Metrics'][0]} and f1: {best['Metrics'][1]}")
 
         elif cmd.lower() == "task 2":
-            task_two(X2, Y2, algorithms_classifier, best_classifier)
+            task_two(X1, Y1, algorithms_classifier, best_classifier)
 
         elif cmd.lower() == "task 3":
             metrics, best = task_three(X2, Y2, algorithms_regressor, best_regressor)
