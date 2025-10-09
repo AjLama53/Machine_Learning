@@ -100,8 +100,6 @@ def task_one(input, output, algorithms, best):
 
 
 def task_two(input, output, algorithms, best):
-    from sklearn.preprocessing import LabelEncoder
-    import shap
 
     model = algorithms[best["Name"]]
 
@@ -110,7 +108,7 @@ def task_two(input, output, algorithms, best):
     class_names = le.classes_
 
     X_train, X_test, Y_train, Y_test = train_test_split(
-        input, new_out, test_size=0.20, stratify=new_out
+        input, new_out, test_size=0.20, stratify=new_out, random_state=42
     )
 
     print("Training model")
@@ -122,10 +120,11 @@ def task_two(input, output, algorithms, best):
     shap_values = explainer(X_test)
     print("SHAP values computed")
 
-    # ----- Plot top 10 per cancer -----
+    # ----- (a) per-cancer top-10 SHAP features -----
     print("Generating per-cancer top 10 SHAP feature plots...")
 
-    # If multiclass → shap_values.values has shape (n_samples, n_classes, n_features)
+    os.makedirs("Homework3/images", exist_ok=True)
+
     for i, cls in enumerate(class_names):
         print(f"  Plotting top 10 features for {cls}...")
         shap.plots.bar(shap_values[:, :, i], max_display=10, show=False)
@@ -134,7 +133,36 @@ def task_two(input, output, algorithms, best):
         plt.close()
 
     print("All per-cancer SHAP plots saved successfully.")
+
+    # ----- (b) force plots for one patient (ID: TCGA-39-5011-01A) -----
+    print("Generating SHAP force plots for patient TCGA-39-5011-01A...")
+
+    # Find the matching patient row (if present)
+    if "Ensembl_ID" in input.columns:
+        patient_mask = input["Ensembl_ID"] == "TCGA-39-5011-01A"
+    else:
+        patient_mask = input.index == "TCGA-39-5011-01A"
+
+    if patient_mask.sum() > 0:
+        patient_row = input[patient_mask]
+        patient_shap = explainer(patient_row)
+
+        for i, cls in enumerate(class_names):
+            shap.plots.force(
+                explainer.expected_value[i],
+                patient_shap.values[:, :, i],
+                patient_row,
+                matplotlib=True,
+                show=False
+            )
+            plt.title(f"SHAP Force Plot – Patient TCGA-39-5011-01A ({cls})")
+            plt.savefig(f"Homework3/images/shap_force_TCGA-39-5011-01A_{cls}.png", bbox_inches="tight")
+            plt.close()
+        print("Force plots generated successfully.")
+    else:
+        print("Patient TCGA-39-5011-01A not found in dataset.")
     return
+
 
 
 
@@ -232,8 +260,65 @@ def task_three(input, output, algorithms, best):
 
     return metrics, best
 
-def task_four():
-    ...
+def task_four(input, output, algorithms, best, drugs):
+    model = algorithms[best["Name"]]
+
+    drug_names = sorted(drugs.unique())
+
+    X_train, X_test, Y_train, Y_test, drugs_train, drugs_test = train_test_split(
+        input, output, drugs, test_size=0.20, random_state=42
+    )
+
+    print("Training model")
+    model.fit(X_train, Y_train)
+    print("Model Trained")
+
+    print("Creating explainer and computing SHAP values")
+    explainer = shap.TreeExplainer(model)
+    print("Explainer ready")
+
+    os.makedirs("Homework3/images", exist_ok=True)
+
+    # ----- (a) per-drug top-10 SHAP features -----
+    print("Generating per-drug top 10 SHAP feature plots...")
+
+    for drug in drug_names:
+        mask = drugs_test == drug
+        if mask.sum() == 0:
+            continue
+
+        X_sub = X_test[mask]
+        Y_sub = Y_test[mask]
+        shap_values_sub = explainer(X_sub)
+
+        shap.plots.bar(shap_values_sub, max_display=10, show=False)
+        plt.title(f"Top 10 SHAP Features for {drug}")
+        plt.savefig(f"Homework3/images/shap_top10_{drug}.png", bbox_inches="tight")
+        plt.close()
+
+    print("All per-drug SHAP plots saved successfully.")
+
+    # ----- (b) least-error drug–cell-line pair -----
+    print("Finding least-error drug–cell-line pair...")
+    Y_pred = model.predict(X_test)
+    abs_errors = np.abs(Y_pred - Y_test)
+    min_idx = np.argmin(abs_errors)
+
+    least_error_drug = drugs_test.iloc[min_idx]
+    least_error_cell = X_test.index[min_idx]
+
+    print(f"Least-error sample: Drug={least_error_drug}, CellLine={least_error_cell}")
+
+    shap_values_single = explainer(X_test.iloc[[min_idx]])
+
+    shap.plots.bar(shap_values_single, max_display=10, show=False)
+    plt.title(f"Top 10 SHAP Features  {least_error_drug} ({least_error_cell})")
+    plt.savefig(f"Homework3/images/shap_least_error_{least_error_drug}_{least_error_cell}.png", bbox_inches="tight")
+    plt.close()
+
+    print("Least-error SHAP plot saved.")
+    return
+
 
 
 def main():
@@ -265,11 +350,18 @@ def main():
         "Metrics": [float("inf"),float("inf"),float("-inf"),float("inf")]
     }
 
-    df = pd.read_csv("lncRNA_5_Cancers.csv")
+    df1 = pd.read_csv("lncRNA_5_Cancers.csv")
 
-    X = df.drop(['Ensembl_ID', 'Class'], axis=1)
+    X1 = df1.drop(['Ensembl_ID', 'Class'], axis=1)
 
-    Y = df['Class']
+    Y1 = df1['Class']
+
+    df2 = pd.read_csv('hw3-drug-screening-data.csv')
+
+    X2 = df2.drop(['CELL_LINE_NAME', 'DRUG_NAME', 'LN_IC50'], axis=1)
+    Y2 = df2['LN_IC50']
+
+    drugs = df2['DRUG_NAME']
 
     while True:
 
@@ -283,7 +375,7 @@ def main():
 
 
         if cmd.lower() == "task 1":
-            metrics, best = task_one(X, Y, algorithms_classifier, best_classifier)
+            metrics, best = task_one(X1, Y1, algorithms_classifier, best_classifier)
             for name, metric in metrics.items():
                 print(f"================={name} Stats================")
                 print()
@@ -295,10 +387,10 @@ def main():
             print(f"Best Algorithm: {best['Name']} with accuracy: {best['Metrics'][0]} and f1: {best['Metrics'][1]}")
 
         elif cmd.lower() == "task 2":
-            task_two(X, Y, algorithms_classifier, best_classifier)
+            task_two(X2, Y2, algorithms_classifier, best_classifier)
 
         elif cmd.lower() == "task 3":
-            metrics, best = task_three(X, Y, algorithms_regressor, best_regressor)
+            metrics, best = task_three(X2, Y2, algorithms_regressor, best_regressor)
             for name, metric in metrics.items():
                 print(f"================={name} Stats================")
                 print()
@@ -316,7 +408,7 @@ def main():
             print(f"RMSE: {best['Metrics'][3]:.4f}")
 
         elif cmd.lower() == "task 4":
-            ...
+            task_four(X2, Y2, algorithms_regressor, best_regressor, drugs)
 
         elif cmd.lower() == "exit":
             break
