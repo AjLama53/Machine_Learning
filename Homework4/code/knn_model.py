@@ -1,8 +1,8 @@
 # This will be the file that builds the KNN model, trains and fits
-
+import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import StratifiedKFold
-from metrics_util import calculate_metrics, plot_confusion_matrix, plot_roc_curve, plot_pr_curve
+from metrics_util import *
 
 class KNN:
 
@@ -43,16 +43,10 @@ class KNN:
 
 
     def compute_knn_metrics(self, labels):
+        compute_all_metrics(self.Y_trues, self.Y_preds, self.Y_probs, labels)
 
-        knn_cr = calculate_metrics(self.Y_trues, self.Y_preds, labels=labels)
-
-        knn_cf = plot_confusion_matrix(self.Y_trues, self.Y_preds, labels=labels)
-
-        plot_roc_curve(self.Y_trues, self.Y_probs, labels)
-
-        plot_pr_curve(self.Y_trues, self.Y_probs, labels)
-
-        return knn_cr, knn_cf
+        
+        
 
 
 

@@ -24,7 +24,7 @@ def scale_data(X):
 
     X_scaled = scaler.fit_transform(X)
 
-    X_scaled = pd.DataFrame(X_scaled, X.columns)
+    X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
 
     return X_scaled
 

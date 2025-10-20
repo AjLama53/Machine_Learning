@@ -7,6 +7,9 @@
 # kmeans_model.py: KMeans clustering & visualization
 from data_utils import load_data, scale_data
 from knn_model import KNN
+from svm_model import SVM
+from kmeans_model import KMEANS
+import sys
 
 
 def main():
@@ -16,13 +19,25 @@ def main():
     X_scaled = scale_data(X)
     # We scale our features so outliers do not have big effects
 
-    knn = KNN()
+    #knn = KNN()
 
-    knn.compute_knn(X_scaled, Y)
+    #print("Printing metrics")
+    #knn.compute_knn(X_scaled, Y)
 
-    
+    #knn.compute_knn_metrics(labels)
 
-    print(*knn.compute_knn_metrics(labels), sep='\n')
+    #svm = SVM()
+
+    #svm.compute_svm(X_scaled, Y)
+
+    #svm.compute_svm_metrics(labels)
+
+    kmeans = KMEANS()
+
+    kmeans.compute_kmeans(X_scaled)
+
+
+
 
 
 
