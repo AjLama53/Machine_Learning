@@ -2,7 +2,7 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import StratifiedKFold
-from metrics_util import *
+from metrics_util import calculate_metrics, plot_confusion_matrix, binarize_classes, plot_roc_curve, plot_pr_curve, compute_all_metrics
 
 class KNN:
 
